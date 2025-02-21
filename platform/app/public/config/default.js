@@ -13,6 +13,9 @@ window.config = {
   showLoadingIndicator: true,
   strictZSpacingForVolumeViewport: true,
   groupEnabledModesFirst: true,
+  preferSizeOverAccuracy: true,
+  useNorm16Texture: false,
+  useSharedArrayBuffer: 'AUTO',
   maxNumRequests: {
     interaction: 100,
     thumbnail: 75,
