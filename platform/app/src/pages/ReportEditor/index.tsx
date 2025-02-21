@@ -26,6 +26,9 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
   const [submitTriggered, setSubmitTrigged] = useState(false);
   const [criticalFindingModal, setCriticalFindingModal] = useState({ visible: false, data: {} })
 
+  const { pacs_order } = patientDetails;
+  const { patient } = pacs_order;
+
   const handleContentChange = (newContent) => {
     console.log("newContent", newContent);
     setContent(newContent);
@@ -52,13 +55,13 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
     };
 
     const updateStudyStatus = async (status) => {
-      makePostCall("/close-report", { order_id: patientDetails.id, status: status })
+      makePostCall("/close-report", { order_id: pacs_order.pacs_ord_id, status: status })
     }
 
     // Set up keep-alive ping
     const pingInterval = setInterval(async () => {
       try {
-        await makePostCall("/study-ping", { order_id: patientDetails.id, status: 'R' });
+        await makePostCall("/study-ping", { order_id: pacs_order.pacs_ord_id, status: 'R' });
       } catch (error) {
         console.error('Keep-alive ping failed:', error);
       }
@@ -76,8 +79,8 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
 
   useEffect(() => {
     if (patientDetails) {
-      setCorrelated(patientDetails?.po_correlated);
-      setDiagnosed(patientDetails?.po_diagnosed);
+      setCorrelated(pacs_order?.po_correlated);
+      setDiagnosed(pacs_order?.po_diagnosed);
     }
   }, [patientDetails]);
 
@@ -94,11 +97,15 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
   }
 
   const saveReport = (newContent, status, currentReport, { proxy_user }, callback) => {
+    console.log("SAVE REPORT", pacs_order);
+    const { patient } = pacs_order;
+
     makePostCall('/submit-report', {
       html: newContent,
-      yh_no: patientDetails?.po_pin,
-      order_no: patientDetails?.po_ord_no,
-      acc_no: patientDetails?.po_acc_no,
+      yh_no: patient?.pat_pin,
+      order_no: pacs_order?.po_his_ord_no,
+      acc_no: pacs_order?.po_acc_no,
+      order_id: pacs_order.pacs_ord_id,
       user_id: getUserDetails()?.username,
       proxy_user: proxy_user,
       status,
@@ -127,9 +134,10 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
 
   const fetchPrevReports = () => {
     makePostCall('/get-reports', {
-      yh_no: patientDetails?.po_pin,
-      order_no: patientDetails?.po_ord_no,
-      acc_no: patientDetails?.po_acc_no,
+      yh_no: patient?.pat_pin,
+      his_ord_no: pacs_order?.po_his_ord_no,
+      acc_no: pacs_order?.po_acc_no,
+      order_id: pacs_order.pacs_ord_id,
     })
       .then(res => {
         const resp_data = res.data?.data || [];
@@ -142,7 +150,7 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
   }
 
   const getTemplates = () => {
-    makeGetCall(`/get-templates?modality=${patientDetails?.modality}&node=${selectedNode}`)
+    makeGetCall(`/get-templates?modality=${pacs_order?.po_modality}&node=${selectedNode}`)
       .then(res => {
         setTemplates(res?.data?.data || []);
       })
@@ -152,7 +160,7 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
   }
 
   const getNodes = () => {
-    makeGetCall(`/get-nodes?modality=${patientDetails?.modality}`)
+    makeGetCall(`/get-nodes?modality=${pacs_order?.po_modality}`)
       .then(res => {
         setNodes(res?.data?.data || []);
       })
@@ -170,20 +178,20 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
   useEffect(() => {
     if (currentReport) {
       // setContent(`${TemplateHeader(patientDetails)}${currentReport?.pr_html}`);
-      setContent(`${currentReport?.pr_html}`);
+      setContent(`${currentReport?.pr_report_html}`);
     }
   }, [currentReport]);
 
   const reportColumns = [
     {
       title: 'Created By',
-      dataIndex: 'pr_created_by',
-      key: 'pr_created_by',
+      dataIndex: 'pr_reported_by',
+      key: 'pr_reported_by',
     },
     {
       title: 'Created Date',
-      dataIndex: 'created_at',
-      key: 'created_at',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
     },
     {
       title: 'Status',
@@ -212,7 +220,7 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
   const handleDelete = (rec) => {
     makePostCall('/delete-report', {
       report_id: rec?.pr_id,
-      yh_no: patientDetails?.po_pin,
+      yh_no: patient?.pat_pin,
     })
       .then(res => {
         fetchPrevReports();
@@ -223,7 +231,7 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
   }
 
   const handleTemplateChange = (val) => {
-    setCurrentReport({ pr_html: val })
+    setCurrentReport({ pr_report_html: val })
     // fetch(`/templates/${val}.html`)
     //   .then(response => response.text())
     //   .then(html => {
@@ -252,10 +260,13 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
   }
 
   const handlePrint = () => {
+    console.log("currentReport", currentReport);
+
     makePostCall('/print-report', {
       report: currentReport,
       patDetails: patientDetails,
       html: content, //.replaceAll(' ', '&nbsp'),
+      order_id: pacs_order.pacs_ord_id
     }, {
       responseType: "arraybuffer",
     })
@@ -278,8 +289,10 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
   }
 
   const goToRadiologyDesk = (patDetails) => {
-    const { po_pin, po_acc_no, po_site } = patDetails;
-    window.open(`${RADIOLOGY_URL(po_pin, po_site)}`, '_blank')
+    const { pacs_order } = patDetails
+    const { patient, po_site } = pacs_order;
+    const { pat_pin } = patient;
+    window.open(`${RADIOLOGY_URL(pat_pin, po_site)}`, '_blank')
   }
 
   return (
@@ -289,17 +302,17 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
           <div className="!patient-details">
             <div className="d-flex">
               <div className="pat-name">
-                {`${patientDetails?.po_pat_name}, ${patientDetails?.po_pin}`}
+                {`${patient?.pat_name}, ${patient?.pat_pin}`}
               </div>
               {/* <Link to={}>Go to Viewer</Link> */}
-              <Button danger className="ms-auto" type="default" onClick={() => { window.open(`/viewer?StudyInstanceUIDs=${patientDetails?.po_study_uid}`, '_blank') }}> Launch Viewer</Button>
+              <Button danger className="ms-auto" type="default" onClick={() => { window.open(`/viewer?StudyInstanceUIDs=${patientDetails?.ps_study_uid}`, '_blank') }}> Launch Viewer</Button>
               <Button danger className="ms-auto" type="default" onClick={() => { goToRadiologyDesk(patientDetails) }}> Radiology Desk</Button>
             </div>
             <div>
-              {`${patientDetails?.po_pat_sex} / ${patientDetails?.po_pat_dob ? moment(patientDetails?.po_pat_dob).fromNow(true) : 'NA'}`}
+              {`${patient?.pat_sex} / ${patient?.pat_dob ? moment(patient?.pat_dob).fromNow(true) : 'NA'}`}
             </div>
-            <div>{`${patientDetails?.modality} / ${patientDetails?.po_ref_doc} ,
-            ${moment(ConvertStringToDate(patientDetails?.po_study_dt, patientDetails?.po_study_tm)).format("DD-MM-YYYY HH:mm:ss")}`}
+            <div>{`${pacs_order?.po_modality} / ${pacs_order?.po_ref_doc} ,
+            ${moment(ConvertStringToDate(patientDetails?.ps_study_dt_tm, patientDetails?.po_study_tm)).format("DD-MM-YYYY HH:mm:ss")}`}
             </div>
           </div>
         </Card>

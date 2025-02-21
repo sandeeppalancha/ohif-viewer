@@ -64,6 +64,7 @@ const OrdersList = () => {
       html: newContent,
       yh_no: reportEditorModal.data?.po_pin,
       order_no: reportEditorModal.data?.po_ord_no,
+      order_id: reportEditorModal?.data?.pacs_order?.pacs_ord_id,
       acc_no: reportEditorModal.data?.po_acc_no,
       user_id: getUserDetails()?.username,
       proxy_user: proxy_user,

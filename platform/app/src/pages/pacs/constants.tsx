@@ -35,8 +35,8 @@ export const orderColumns = ({ openViewer, openReportEditor, role, addFile, view
       title: '',
       render: (_, rec) => {
         return (
-          <Tooltip title={rec.ris_notes?.length > 0 ? 'View Notes' : 'No Notes available'}>
-            <Button disabled={!rec.ris_notes?.length > 0} style={{ padding: '0 0.5rem' }} onClick={() => viewNotes(rec)}>
+          <Tooltip title={rec.pacs_order?.ris_notes?.length > 0 ? 'View Notes' : 'No Notes available'}>
+            <Button disabled={!rec.pacs_order?.ris_notes?.length > 0} style={{ padding: '0 0.5rem' }} onClick={() => viewNotes(rec)}>
               <FileOutlined />
             </Button>
           </Tooltip>
@@ -46,15 +46,19 @@ export const orderColumns = ({ openViewer, openReportEditor, role, addFile, view
     },
     {
       title: '',
-      dataIndex: 'po_reporting_status',
+      dataIndex: 'ps_reporting_status',
       width: 50,
+      render: (text, rec) => {
+        const { order_workflow } = rec;
+        return `${order_workflow?.ow_reporting_status || ''}`
+      }
     },
     {
       dataIndex: "po_pat_name",
       title: "Patient Name",
       render: (text, record) => {
         return (
-          <Tooltip title={text}>
+          <Tooltip title={record.pacs_order?.patient?.pat_name}>
             <Button
               color="blue"
               className="ms-1auto d-flex align-items-center"
@@ -64,7 +68,7 @@ export const orderColumns = ({ openViewer, openReportEditor, role, addFile, view
                 <EyeOutlined color="orange" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openViewer(record); }} />
               </Tooltip>
               <span className="whitespace-normal">
-                {text}
+                {record.pacs_order?.patient?.pat_name}
               </span>
             </Button>
           </Tooltip>
@@ -79,42 +83,45 @@ export const orderColumns = ({ openViewer, openReportEditor, role, addFile, view
       render: (txt, rec) => {
         return (
           <Tooltip
-            title={rec.po_emergency === 'Y' ? 'Emergency' : ''}
+            title={rec.pacs_order?.po_emergency === 'Y' ? 'Emergency' : ''}
           >
             <span>
-              {txt}
+              {rec?.pacs_order?.po_diag_desc}
             </span>
           </Tooltip>
         )
       },
       onCell: (record) => ({
-        className: record.po_emergency === 'Y' ? 'emergency' : ''
+        className: record.pacs_order?.po_emergency === 'Y' ? 'emergency' : ''
       }),
     },
     {
       dataIndex: "po_pin",
       title: "Pat. ID",
-      width: 130
+      width: 130,
+      render: (text, rec) => rec?.pacs_order?.patient?.pat_pin
     },
     {
       dataIndex: "po_ord_no",
       title: "Order No",
-      width: 100
+      width: 100,
+      render: (text, rec) => rec?.pacs_order?.po_his_ord_no
     },
     {
       dataIndex: "po_acc_no",
       title: "Acc. No",
-      width: 100
+      width: 100,
+      render: (text, rec) => rec?.pacs_order?.po_acc_no
     },
     {
       dataIndex: "po_his_status",
       title: "HIS Status",
       width: 120,
       render: (text, rec, ind) => {
-        const currentlyConfirmed = rec.po_his_status === 'CONFIRMED'
+        const currentlyConfirmed = rec?.pacs_order?.po_his_status === 'CONFIRMED'
         return (
           <span>
-            {text}
+            {rec?.pacs_order?.po_his_status}
             {
               userDetails?.user_type === 'technician' ? (
                 <Popconfirm
@@ -149,49 +156,54 @@ export const orderColumns = ({ openViewer, openReportEditor, role, addFile, view
       title: "Pat. Age",
       width: 80,
       render: (val, record) => {
-        return calculateExactAge(record.po_pat_dob) //record.po_pat_dob ? moment(record.po_pat_dob, 'YYYYMMDD').fromNow(true) : '';
+        return calculateExactAge(record.pacs_order?.patient?.pat_dob) //record.po_pat_dob ? moment(record.po_pat_dob, 'YYYYMMDD').fromNow(true) : '';
       }
     },
     {
       dataIndex: "po_pat_sex",
       title: "Pat. Sex",
-      width: 80
+      width: 80,
+      render: (text, rec) => rec?.pacs_order?.patient?.pat_sex
     },
 
     {
       dataIndex: "po_body_part",
       title: "Body Part",
-      width: 100
+      width: 100,
+      render: (text, rec) => rec?.pacs_order?.po_body_part
     },
     {
       dataIndex: "po_site",
       title: "Site",
-      width: 150
+      width: 150,
+      render: (text, rec) => rec?.pacs_order?.po_site
     },
     {
       dataIndex: "modality",
       title: "Modality",
-      width: 90
+      width: 90,
+      render: (text, rec) => rec?.pacs_order?.po_modality
     },
 
     {
       dataIndex: "po_ref_doc",
       title: "Ref Doc",
-      width: 120
+      width: 120,
+      render: (text, rec) => rec?.pacs_order?.po_ref_doc
     },
     {
-      dataIndex: "po_scan_date",
+      dataIndex: "ps_study_dt_tm",
       title: "Scan Dt.",
       render: (val, record) => {
         return (
-          <span>{moment(ConvertStringToDate(record?.po_study_dt, record?.po_study_tm)).format("DD-MM-YYYY HH:mm:ss")}</span>
+          <span>{moment(val).format("DD-MM-YYYY HH:mm:ss")}</span>
         )
       },
       width: 150
     },
 
     {
-      dataIndex: "po_received_date",
+      dataIndex: "ps_scan_received_at",
       title: "Received Dt.",
       width: 150
     },
@@ -199,22 +211,26 @@ export const orderColumns = ({ openViewer, openReportEditor, role, addFile, view
       dataIndex: "po_assigned_to",
       title: "Assigned To",
       width: 150,
-      hidden: userDetails?.user_type === 'technician'
+      hidden: userDetails?.user_type === 'technician',
+      render: (val, rec) => {
+        return `${rec?.order_workflow?.ow_assigned_rad_id}`
+      }
     },
     {
       dataIndex: "po_status",
       title: "Status",
       fixed: 'right',
       render: (text, record) => {
+        const pacs_status = record?.pacs_order?.po_pacs_status;
         return (
           <>
-            {record.po_status === 'SIGNEDOFF' && (
+            {pacs_status === 'SIGNEDOFF' && (
               <span className="pointer md-icon" onClick={() => printReport(record)}>
                 <PrinterOutlined />
               </span>
             )}
-            <Tag color={statusColors[text]}>{text.replaceAll('_', ' ')}</Tag>
-            {record.po_status !== 'PENDING' && (
+            <Tag color={statusColors[pacs_status]}>{pacs_status?.replaceAll('_', ' ')}</Tag>
+            {pacs_status !== 'PENDING' && (
               <span className="pointer md-icon" onClick={() => openReportEditor(record)}>
                 <FileTextOutlined />
               </span>
@@ -232,7 +248,7 @@ export const orderColumns = ({ openViewer, openReportEditor, role, addFile, view
       render: (text, record) => {
         return (
           <>
-            {record?.ordersUser?.user_fullname}
+            {record?.pacs_order?.po_signed_by}
           </>
         )
       },
@@ -247,7 +263,7 @@ export const orderColumns = ({ openViewer, openReportEditor, role, addFile, view
         return (
           <>
             {
-              record.po_assigned_technician ? (<span>{record?.po_assigned_technician}</span>) :
+              record?.order_workflow?.ow_assigned_technician ? (<span>{record?.order_workflow?.ow_assigned_technician}</span>) :
                 (<Popconfirm
                   title={"Assign to yourself?"}
                   onConfirm={() => {
@@ -275,8 +291,8 @@ export const orderColumns = ({ openViewer, openReportEditor, role, addFile, view
       title: "Actions",
       fixed: 'right',
       render: (text, rec, ind) => {
-        const currentlyBlocked = rec.po_block_reporting === 'Y';
-        const currentlyEmergency = rec.po_emergency === 'Y';
+        const currentlyBlocked = rec?.order_workflow?.ow_reporting_blocked;
+        const currentlyEmergency = rec?.pacs_order?.po_emergency;
         return (
           <>
             <Popconfirm
@@ -317,7 +333,7 @@ export const orderColumns = ({ openViewer, openReportEditor, role, addFile, view
               > */}
               <span className="pointer ms-1">
                 {/* {rec.po_block_reporting === 'Y' ? <CheckSquareOutlined style={{ color: 'green' }} /> : <CloseSquareOutlined style={{ color: 'red' }} />} */}
-                {currentlyEmergency ? <Button>Mark Emergency</Button> : <Button>Not Emergency</Button>}
+                {currentlyEmergency ? <Button>Not Emergency</Button> : <Button>Mark Emergency</Button>}
               </span>
               {/* </Tooltip> */}
             </Popconfirm>

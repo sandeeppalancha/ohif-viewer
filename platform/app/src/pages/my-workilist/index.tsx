@@ -20,7 +20,9 @@ const MyWorklist = () => {
   const userDetails = getUserDetails();
   const [userList, setUserList] = useState([]);
   // Set the default value to [yesterday, today]
-  const [dateRange, setDateRange] = useState([]);
+  const today = dayjs();
+  const yesterday = dayjs().subtract(1, 'days');
+  const [dateRange, setDateRange] = useState([yesterday, today]);
   const [refreshDisabled, setRefreshDisabled] = useState(false);
 
   const [viewNotesModal, setViewNotesModal] = useState({ visible: false, details: null });
@@ -70,6 +72,7 @@ const MyWorklist = () => {
       html: newContent,
       yh_no: reportEditorModal.data?.po_pin,
       order_no: reportEditorModal.data?.po_ord_no,
+      order_id: reportEditorModal?.data?.pacs_order?.pacs_ord_id,
       acc_no: reportEditorModal.data?.po_acc_no,
       user_id: getUserDetails()?.username,
       proxy_user: proxy_user,
@@ -196,7 +199,7 @@ const MyWorklist = () => {
 
   const viewNotes = (rec) => {
     console.log("view notes", rec);
-    const firstNote = rec.ris_notes[0] || {};
+    const firstNote = rec.pacs_order?.ris_notes[0] || {};
     setSelectedNote(firstNote)
     setViewNotesModal({ visible: true, details: rec })
   }

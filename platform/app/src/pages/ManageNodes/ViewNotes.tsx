@@ -2,13 +2,17 @@ import { Col, Row } from "antd"
 import { BASE_API } from "../../axios"
 import { Document, Page, pdfjs } from "react-pdf";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { getAccessToken, getUserDetails, makePostCall } from "../../utils/helper";
+import { calculateExactAge, getAccessToken, getUserDetails, makePostCall } from "../../utils/helper";
 import './view-notes.scss'
 
 const ViewNotes = ({ viewNotesModal, handleNoteSelection, selectedNote }) => {
   pdfjs.GlobalWorkerOptions.workerSrc = '/pdf-worker-min.js';
 
   const [prevNotes, setPrevNotes] = useState([]);
+
+  const { details } = viewNotesModal;
+  const { pacs_order } = details;
+  const { patient } = pacs_order;
 
   const customHeaders = {
     Authorization: `Bearer ${getAccessToken()}`, // Add your token here
@@ -21,12 +25,15 @@ const ViewNotes = ({ viewNotesModal, handleNoteSelection, selectedNote }) => {
   }, []);
 
   const fetchPrevNotes = () => {
-    const { po_pin, po_acc_no, po_ord_no } = viewNotesModal?.details;
+    const { pacs_order } = viewNotesModal?.details;
+    const { patient } = pacs_order;
+    const { pat_pin } = patient;
+
     const payload = {
       user_id,
-      pin: po_pin,
-      acc_no: po_acc_no,
-      ord_no: po_ord_no
+      pin: pat_pin,
+      order_id: pacs_order.his_ord_no,
+      ord_no: pacs_order.his_ord_no
     }
     makePostCall("/pat-prev-notes", payload)
       .then(res => {
@@ -47,29 +54,29 @@ const ViewNotes = ({ viewNotesModal, handleNoteSelection, selectedNote }) => {
           <Row>
             <Col span={8}>
               <span className='notes-label'>Name: </span>
-              <span className='notes-value'>{viewNotesModal?.details?.po_pat_name}</span>
+              <span className='notes-value'>{patient?.pat_name}</span>
             </Col>
             <Col span={8}>
               <span className='notes-label'>PIN: </span>
-              <span className='notes-value'>{viewNotesModal?.details?.po_pin}</span>
+              <span className='notes-value'>{patient?.pat_pin}</span>
             </Col>
             <Col span={8}>
               <span className='notes-label'>Age: </span>
-              <span className='notes-value'>{viewNotesModal?.details?.po_pat_dob}</span>
+              <span className='notes-value'>{calculateExactAge(patient?.pat_dob)}</span>
             </Col>
           </Row>
           <Row>
             <Col span={8}>
               <span className='notes-label'>Order No: </span>
-              <span className='notes-value'>{viewNotesModal?.details?.po_ord_no}</span>
+              <span className='notes-value'>{pacs_order?.po_his_ord_no}</span>
             </Col>
             <Col span={8}>
               <span className='notes-label'>Accession No: </span>
-              <span className='notes-value'>{viewNotesModal?.details?.po_pin}</span>
+              <span className='notes-value'>{pacs_order?.po_acc_no}</span>
             </Col>
             <Col span={8}>
               <span className='notes-label'>Ref Doc: </span>
-              <span className='notes-value'>{viewNotesModal?.details?.po_ref_doc}</span>
+              <span className='notes-value'>{pacs_order?.po_ref_doc}</span>
             </Col>
           </Row>
         </div>
@@ -87,7 +94,7 @@ const ViewNotes = ({ viewNotesModal, handleNoteSelection, selectedNote }) => {
                     className={`notes-list-item ${note.rn_id === selectedNote?.rn_id ? 'selected' : ''}`}
                     onClick={() => { handleNoteSelection(note, viewNotesModal?.details) }}
                   >
-                    {`${note.rn_upload_type?.toUpperCase()} ${note.rn_file_name ? ' | ' + note.rn_file_name : ''} | ${note.rn_acc_no}`}
+                    {`${note.rn_upload_type?.toUpperCase()} ${note.rn_file_name ? ' | ' + note.rn_file_name : ''} | ${note.rn_acc_no || ''}`}
                   </div>
                 ))}
               </div>

@@ -96,11 +96,15 @@ const PacsList = () => {
   }
 
   const onSave = (newContent, status, currentReport, { proxy_user, correlated, diagnosed }, callback) => {
+    const { pacs_order } = reportEditorModal?.data;
+    const { patient } = pacs_order;
+
     makePostCall('/submit-report', {
       html: newContent,
-      yh_no: reportEditorModal.data?.po_pin,
-      order_no: reportEditorModal.data?.po_ord_no,
-      acc_no: reportEditorModal.data?.po_acc_no,
+      yh_no: patient.pat_pin,
+      order_no: pacs_order?.po_his_ord_no,
+      acc_no: pacs_order?.po_acc_no,
+      order_id: pacs_order?.pacs_ord_id,
       user_id: getUserDetails()?.username,
       proxy_user: proxy_user,
       status,
@@ -137,7 +141,7 @@ const PacsList = () => {
 
   const openViewer = (record) => {
     if (hasStudyViewingPermission(userDetails)) {
-      window.open(`/viewer?StudyInstanceUIDs=${record?.po_study_uid}`, '_blank')
+      window.open(`/viewer?StudyInstanceUIDs=${record?.ps_study_uid}`, '_blank')
     } else {
       message.info("You do not habe the permission to view the study images")
     }
@@ -151,8 +155,7 @@ const PacsList = () => {
       // } else {
       //   message.error(`Study is taken by ${record.po_reported_by}`)
       // }
-      const response = await makePostCall('/study-report-details', { user_id: getUserDetails()?.username, order_id: record.id });
-      console.log("OPen respnse", response);
+      const response = await makePostCall('/study-report-details', { user_id: getUserDetails()?.username, order_id: record?.pacs_order?.pacs_ord_id });
       if (response?.data?.success) {
         setReportEditorModal({ visible: true, data: record });
       } else {
@@ -304,7 +307,7 @@ const PacsList = () => {
   const assignToUser = () => {
     setAssignModal({ visible: false, data: {} });
     // send request to assign users to the selected report
-    makePostCall('/assign-to-user', { acc_nos: selectedRowKeys, assigned_to: selectedUsersToAssign })
+    makePostCall('/assign-to-user', { order_ids: selectedRowKeys, assigned_to: selectedUsersToAssign })
       .then(res => {
         // refresh the report data
         filterResults(filters);
@@ -321,16 +324,16 @@ const PacsList = () => {
   const uploadRisNotes = async () => {
     const { data, modalType, fileType, notes, file, isNotes } = addFileModal;
 
-    const { po_acc_no, po_ord_no, po_pin } = data;
+    const { pacs_order } = data;
+    const { patient } = pacs_order
     const formData = new FormData();
 
 
-    formData.append('acc_no', po_acc_no);
-    formData.append('ord_no', po_ord_no);
-    formData.append('pin', po_pin);
+    formData.append('order_id', pacs_order?.pacs_ord_id);
+    formData.append('pin', pacs_order?.patient?.pat_pin);
 
     let headers = {
-      'Content-Type': 'multipart/form-data',
+      'Content-Type': 'multipart/form-data'
     };
     if (isNotes) {
       formData.append('type', 'notes');
@@ -367,11 +370,10 @@ const PacsList = () => {
 
   const printReport = (rec) => {
     setPrintLoading(true);
-    const { po_acc_no, po_ord_no, po_pin } = rec;
+    const { pacs_order } = rec;
     makePostCall('/print-acc-report', {
-      acc_no: po_acc_no,
-      pin: po_pin,
-      ord_no: po_ord_no, //.replaceAll(' ', '&nbsp'),
+      order_id: pacs_order.pacs_ord_id,
+      user_id: getUserDetails()?.username,
     }, {
       responseType: "arraybuffer",
     })
@@ -391,7 +393,7 @@ const PacsList = () => {
   }
 
   const viewNotes = (rec) => {
-    const firstNote = rec.ris_notes[0] || {};
+    const firstNote = rec.pacs_order?.ris_notes[0] || {};
     setSelectedNote(firstNote)
     setViewNotesModal({ visible: true, details: rec })
   }
@@ -401,14 +403,14 @@ const PacsList = () => {
   }
 
   const toggleReporting = (rec, idx) => {
-    const { po_ord_no, po_acc_no, po_block_reporting } = rec;
+    const { pacs_order } = rec;
+    const { po_pacs_ord_id } = pacs_order;
     const shouldBlock = po_block_reporting !== 'Y';
     const currentIndx = (current - 1) * pageSize + idx;
     // toggle-reporting
     const payload = {
       user_id: getUserDetails()?.username,
-      ord_no: po_ord_no,
-      acc_no: po_acc_no,
+      order_id: po_pacs_ord_id,
       shouldBlock,
     };
     makePostCall('/toggle-reporting', payload)
@@ -425,9 +427,12 @@ const PacsList = () => {
   }
 
   const toggleFeatures = (rec, idx, feature) => {
-    const { po_ord_no, po_acc_no, po_his_status, po_block_reporting, po_emergency } = rec;
+    const { pacs_order, order_workflow } = rec;
+    const { pacs_ord_id, po_emergency, po_his_status } = pacs_order;
+    const { ow_reporting_blocked } = order_workflow;
+
     const shouldConfirm = po_his_status !== 'CONFIRMED';
-    const shouldBlock = po_block_reporting !== 'Y';
+    const shouldBlock = ow_reporting_blocked !== 'Y';
     const markEmergency = po_emergency !== 'Y';
 
     const currentIndx = (current - 1) * pageSize + idx;
@@ -436,8 +441,7 @@ const PacsList = () => {
     // toggle-reporting
     const payload = {
       user_id: getUserDetails()?.username,
-      ord_no: po_ord_no,
-      acc_no: po_acc_no,
+      order_id: pacs_ord_id,
       // shouldConfirm,
     };
 
@@ -484,15 +488,14 @@ const PacsList = () => {
   }
 
   const toggleConfirmation = (rec, idx) => {
-    console.log("toggleConfirmation", idx, rec);
-    const { po_ord_no, po_acc_no, po_his_status } = rec;
+    const { pacs_order } = rec;
+    const { pacs_ord_id, po_his_status } = pacs_order;
     const shouldConfirm = po_his_status !== 'CONFIRMED';
     const currentIndx = (current - 1) * pageSize + idx;
     // toggle-reporting
     const payload = {
       user_id: getUserDetails()?.username,
-      ord_no: po_ord_no,
-      acc_no: po_acc_no,
+      order_id: pacs_ord_id,
       shouldConfirm,
     };
     makePostCall('/toggle-confirmation', payload)
@@ -541,7 +544,7 @@ const PacsList = () => {
 
   const closeReport = async (data) => {
     setReportEditorModal({ visible: false });
-    const resp = await makePostCall("/close-report", { order_id: data?.id })
+    const resp = await makePostCall("/close-report", { order_id: data?.pacs_order?.pacs_ord_id })
   }
 
   return (
@@ -649,7 +652,7 @@ const PacsList = () => {
               showTotal: (total, range) => `Showing ${range[0]}-${range[1]} of ${total} items`,
               position: ['topRight']
             }}
-            rowKey={(rec) => rec.po_acc_no}
+            rowKey={(rec) => rec.pacs_order?.pacs_ord_id}
             dataSource={orders.data || []}
             onRow={(record, rowIndex) => {
               return {

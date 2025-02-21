@@ -68,16 +68,14 @@ const CriticalFinding = ({ patDetails, closeNotificationModal }) => {
   const handleSubmit = () => {
     console.log("handleSubmit", criticalForm.getFieldsValue());
     const { disease, other, findings, } = criticalForm.getFieldsValue();
-    const { po_acc_no, po_pin, po_ord_no } = patDetails;
+    const { pacs_order } = patDetails;
     const payload = {
       doctors: selectedPhysicians?.map(itm => ({ ref_cd: itm.DOC_REF_CD, doc_email: itm.DOC_EMAIL, doc_mobile: itm.DOC_MOBILE_TEL })),
       user_id: getUserDetails()?.username,
       disease: disease === 'other' ? other : disease,
       findings,
-      acc_no: po_acc_no,
-      ord_no: po_ord_no,
-      pin: po_pin
-    }
+      order_id: pacs_order.pacs_ord_id,
+    };
     makePostCall('/notify-physicians', payload)
       .then(res => {
         console.log("Notified");

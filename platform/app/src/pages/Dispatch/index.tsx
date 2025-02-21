@@ -165,14 +165,12 @@ const DispatchList = ({ isConsultant }) => {
   }
 
   const printReport = async (rec, receiverInfo) => {
-    const { po_acc_no, po_ord_no, po_pin } = rec;
+    const { pacs_order } = rec;
     const { receiver_mobile, receiver_name } = receiverInfo || {};
     setReceiverModal({ visible: false })
     setPrintLoading(true);
     makePostCall('/print-acc-report', {
-      acc_no: po_acc_no,
-      pin: po_pin,
-      ord_no: po_ord_no, //.replaceAll(' ', '&nbsp'),
+      order_id: pacs_order.pacs_ord_id,
       user_id: userDetails?.username,
       fromDispatch: !isConsultant || userDetails?.user_type === 'dispatch',
       received_by: receiverInfo ? `${receiver_name} | ${receiver_mobile}` : null
