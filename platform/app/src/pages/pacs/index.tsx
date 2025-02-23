@@ -95,9 +95,10 @@ const PacsList = () => {
       })
   }
 
-  const onSave = (newContent, status, currentReport, { proxy_user, correlated, diagnosed }, callback) => {
+  const onSave = (newContent, status, currentReport, moreInfo, callback) => {
     const { pacs_order } = reportEditorModal?.data;
     const { patient } = pacs_order;
+    const { proxy_user, correlated, diagnosed, co_signing_doctor } = moreInfo;
 
     makePostCall('/submit-report', {
       html: newContent,
@@ -106,7 +107,9 @@ const PacsList = () => {
       acc_no: pacs_order?.po_acc_no,
       order_id: pacs_order?.pacs_ord_id,
       user_id: getUserDetails()?.username,
+      ...moreInfo,
       proxy_user: proxy_user,
+      co_signing_doctor: co_signing_doctor,
       status,
       report_id: currentReport?.pr_id,
       correlated: correlated,

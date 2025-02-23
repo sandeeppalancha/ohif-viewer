@@ -67,7 +67,8 @@ const MyWorklist = () => {
       })
   }
 
-  const onSave = (newContent, status, currentReport, { proxy_user }, callback) => {
+  const onSave = (newContent, status, currentReport, moreInfo, callback) => {
+    const { proxy_user, co_signing_doctor } = moreInfo
     makePostCall('/submit-report', {
       html: newContent,
       yh_no: reportEditorModal.data?.po_pin,
@@ -75,7 +76,9 @@ const MyWorklist = () => {
       order_id: reportEditorModal?.data?.pacs_order?.pacs_ord_id,
       acc_no: reportEditorModal.data?.po_acc_no,
       user_id: getUserDetails()?.username,
+      ...moreInfo,
       proxy_user: proxy_user,
+      co_signing_doctor: co_signing_doctor,
       status,
       report_id: currentReport?.pr_id,
     })

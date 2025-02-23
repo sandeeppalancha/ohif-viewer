@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import RichTextEditor from "./rich-text-editor";
 import "./editor.css";
-import { ConvertStringToDate, getUserDetails, makeGetCall, makePostCall, RADIOLOGY_URL } from "../../utils/helper";
+import { ConvertStringToDate, getUserDetails, makeGetCall, makePostCall, RADIOLOGY_URL, removeContentById } from "../../utils/helper";
 import moment from "moment";
 import { Button, Card, Checkbox, message, Modal, Radio, Select, Table } from "antd";
 import { TemplateHeader } from "./constants";
@@ -18,12 +18,15 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
   const [nodes, setNodes] = React.useState([]);
   const [selectedNode, setSelectedNode] = React.useState(null);
   const [proxyUser, setProxyUser] = React.useState(null);
+  const [cosigningDoctor, setCosigningDoctor] = React.useState(null);
   const [moreAction, setMoreAction] = React.useState(null);
   const [radUsers, setRadUsers] = React.useState([]);
+  const [allUsers, setAllUsers] = React.useState([]);
   const userType = getUserDetails().user_type;
   const [correlated, setCorrelated] = useState(null);
   const [diagnosed, setDiagnosed] = useState(null);
   const [submitTriggered, setSubmitTrigged] = useState(false);
+  const [correlatedMandatory, setCorrelatedMandatory] = useState(false);
   const [criticalFindingModal, setCriticalFindingModal] = useState({ visible: false, data: {} })
 
   const { pacs_order } = patientDetails;
@@ -39,6 +42,7 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
     // getTemplates();
     getNodes();
     fetchRadUsers();
+    fetchAllUsers();
   }, []);
 
   useEffect(() => {
@@ -90,15 +94,15 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
 
   const handleSave = (newContent, status, curReport, moreInfo = {}) => {
     if (onSave) {
-      onSave(content, status, curReport, { ...moreInfo, proxy_user: proxyUser, correlated, diagnosed }, refreshAfterUpdate)
+      onSave(content, status, curReport, { ...moreInfo, proxy_user: proxyUser, co_signing_doctor: cosigningDoctor, correlated, diagnosed }, refreshAfterUpdate)
     } else {
-      saveReport(content, status, curReport, { ...moreInfo, proxy_user: proxyUser }, refreshAfterUpdate)
+      saveReport(content, status, curReport, { ...moreInfo, proxy_user: proxyUser, co_signing_doctor: cosigningDoctor }, refreshAfterUpdate)
     };
   }
 
-  const saveReport = (newContent, status, currentReport, { proxy_user }, callback) => {
-    console.log("SAVE REPORT", pacs_order);
+  const saveReport = (newContent, status, currentReport, moreInfo, callback) => {
     const { patient } = pacs_order;
+    const { proxy_user, co_signing_doctor } = moreInfo;
 
     makePostCall('/submit-report', {
       html: newContent,
@@ -107,7 +111,9 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
       acc_no: pacs_order?.po_acc_no,
       order_id: pacs_order.pacs_ord_id,
       user_id: getUserDetails()?.username,
+      ...moreInfo,
       proxy_user: proxy_user,
+      co_signing_doctor: co_signing_doctor,
       status,
       report_id: currentReport?.pr_id,
       // correlated: correlated,
@@ -129,6 +135,17 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
       .catch(e => {
         console.log(e);
         setRadUsers([]);
+      })
+  }
+
+  const fetchAllUsers = () => {
+    makeGetCall('/user-list')
+      .then(res => {
+        setAllUsers(res.data?.data || []);
+      })
+      .catch(e => {
+        console.log(e);
+        setAllUsers([]);
       })
   }
 
@@ -245,10 +262,18 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
   const radUserOptions = useMemo(() => {
     return radUsers.map(user => ({
       label: user.user_fullname,
-      value: user.username
+      value: user.username,
+      data: user
     }));
 
   }, [radUsers]);
+
+  const allUserOptions = useMemo(() => {
+    return allUsers.map(user => ({
+      label: user.user_fullname,
+      value: user.username
+    }));
+  }, [allUsers]);
 
   const handleSaveForm = (status) => {
     setSubmitTrigged(true);
@@ -256,7 +281,8 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
     //   message.error("Please select the Correlated & Diagnosed options");
     //   return;
     // }
-    handleSave(content, status, currentReport,);
+    const cleanedHtml = removeContentById(content, 'cosign');
+    handleSave(cleanedHtml, status, currentReport);
   }
 
   const handlePrint = () => {
@@ -295,6 +321,13 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
     window.open(`${RADIOLOGY_URL(pat_pin, po_site)}`, '_blank')
   }
 
+  const handleCosigning = (val, opt) => {
+    const { data } = opt;
+    const { user_signature } = data;
+    setCosigningDoctor(val);
+    setCurrentReport({ ...currentReport, pr_report_html: `${currentReport?.pr_report_html} \n\n <div id="cosign">${user_signature}</div>` })
+  }
+
   return (
     <div className="editor-container">
       <div className="left-section">
@@ -312,7 +345,7 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
               {`${patient?.pat_sex} / ${patient?.pat_dob ? moment(patient?.pat_dob).fromNow(true) : 'NA'}`}
             </div>
             <div>{`${pacs_order?.po_modality} / ${pacs_order?.po_ref_doc} ,
-            ${moment(ConvertStringToDate(patientDetails?.ps_study_dt_tm, patientDetails?.po_study_tm)).format("DD-MM-YYYY HH:mm:ss")}`}
+            ${moment(patientDetails?.ps_study_dt_tm).format("DD-MM-YYYY HH:mm:ss")}`}
             </div>
           </div>
         </Card>
@@ -344,13 +377,19 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
             <div><Button onClick={handleNotification}> Notify Physician</Button></div>
             <div><Checkbox /> Need peer opinion from</div>
             <div><Checkbox /> Requires Sub-Speciality Opinion</div>
-            <div><Checkbox /> Report Co-Signing</div>
+            <div><Checkbox onChange={(e) => {
+              setMoreAction(e.target.checked ? 'co_signing' : null)
+            }} /> Report Co-Signing
+              {moreAction === 'co_signing' && (
+                <Select style={{ width: 180 }} onChange={(val, opt) => { handleCosigning(val, opt) }} options={radUserOptions} />
+              )}
+            </div>
 
             <div><Checkbox onChange={(e) => {
               setMoreAction(e.target.checked ? 'proxy-draft' : null)
             }} /> Proxy Draft
               {moreAction === 'proxy-draft' && (
-                <Select style={{ width: 180 }} onChange={(val) => { setProxyUser(val) }} options={radUserOptions} />
+                <Select style={{ width: 180 }} onChange={(val) => { setProxyUser(val) }} options={allUserOptions} />
               )}
             </div>
 
@@ -367,14 +406,14 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
                 <Radio value={'diagnosed'}>Yes</Radio>
                 <Radio value={'notdiagnosed'}>No</Radio>
               </Radio.Group>
-              {submitTriggered && !diagnosed && <div style={{ color: 'red', marginBottom: '8px' }}>This field is required</div>}
+              {submitTriggered && correlatedMandatory && !diagnosed && <div style={{ color: 'red', marginBottom: '8px' }}>This field is required</div>}
             </div>
             <div>Clinically correlated
               <Radio.Group value={correlated} className={submitTriggered ? (!!correlated ? '' : 'error') : ''} onChange={(e) => { setCorrelated(e.target.value) }}>
                 <Radio value={'correlated'}>Yes</Radio>
                 <Radio value={'notcorrelated'}>No</Radio>
               </Radio.Group>
-              {submitTriggered && !correlated && <div style={{ color: 'red', marginBottom: '8px' }}>This field is required</div>}
+              {submitTriggered && correlatedMandatory && !correlated && <div style={{ color: 'red', marginBottom: '8px' }}>This field is required</div>}
             </div>
           </div>
           <div className='d-flex' >

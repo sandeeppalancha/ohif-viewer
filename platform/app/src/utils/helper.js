@@ -82,7 +82,19 @@ export function calculateExactAge(dobString) {
   }
 }
 
+export const removeContentById = (html, idToRemove) => {
+  // Create a temporary DOM element
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+  // Find and remove the element with the specified ID
+  const elementToRemove = temp.querySelector(`#${idToRemove}`);
+  if (elementToRemove) {
+    elementToRemove.remove();
+  }
 
+  // Return the modified HTML string
+  return temp.innerHTML;
+};
 
 
 export const hasReportingPermission = (userDetails) => {

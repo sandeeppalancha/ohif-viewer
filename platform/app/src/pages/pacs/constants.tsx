@@ -221,7 +221,7 @@ export const orderColumns = ({ openViewer, openReportEditor, role, addFile, view
       title: "Status",
       fixed: 'right',
       render: (text, record) => {
-        const pacs_status = record?.pacs_order?.po_pacs_status;
+        const pacs_status = record?.order_workflow?.ow_pacs_status;
         return (
           <>
             {pacs_status === 'SIGNEDOFF' && (
