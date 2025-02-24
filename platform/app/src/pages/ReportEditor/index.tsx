@@ -321,7 +321,7 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
     const { pacs_order } = patDetails
     const { patient, po_site } = pacs_order;
     const { pat_pin } = patient;
-    window.open(`${RADIOLOGY_URL(pat_pin, po_site)}`, '_blank')
+    window.open(`${RADIOLOGY_URL(pat_pin, po_site || '')}`, '_blank')
   }
 
   const handleCosigning = (val, opt) => {
