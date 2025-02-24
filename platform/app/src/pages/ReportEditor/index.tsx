@@ -38,12 +38,15 @@ const ReportEditor = ({ cancel, onSave, patientDetails, selected_report }) => {
   }
 
   useEffect(() => {
-    fetchPrevReports();
     // getTemplates();
     getNodes();
     fetchRadUsers();
     fetchAllUsers();
   }, []);
+
+  useEffect(() => {
+    fetchPrevReports();
+  }, [patientDetails])
 
   useEffect(() => {
     // Handler for browser close/refresh

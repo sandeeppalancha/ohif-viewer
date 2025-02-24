@@ -283,11 +283,11 @@ const OrdersList = () => {
           return {
           }
         }} />
-        {reportEditorModal.visible && (
+        {/* {reportEditorModal.visible && (
           <Modal className='report-modal' width={'100%'} onCancel={() => { setReportEditorModal({ visible: false }) }} footer={null} open={reportEditorModal.visible}>
             <ReportEditor cancel={cancelReport} onSave={onSave} patientDetails={reportEditorModal.data} />
           </Modal>
-        )}
+        )} */}
 
         {saveFiltersModal.visible && (
           <Modal className='save-filter-modal' onCancel={() => { setSaveFiltersModal({ visible: false }) }}

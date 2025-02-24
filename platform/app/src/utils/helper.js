@@ -123,3 +123,28 @@ export const hasUploadNotesPermission = (userDetails) => {
   }
   return false;
 }
+
+export const createTabChannel = (channelName = 'tab_communication') => {
+  const channel = new BroadcastChannel(channelName);
+
+  return {
+    // Send URL update to other tabs
+    sendUrlUpdate: (newUrl) => {
+      channel.postMessage({ type: 'URL_UPDATE', url: newUrl });
+    },
+
+    // Listen for URL updates in the other tab
+    listenForUpdates: (callback) => {
+      channel.onmessage = (event) => {
+        if (event.data.type === 'URL_UPDATE') {
+          callback(event.data.url);
+        }
+      };
+    },
+
+    // Clean up when no longer needed
+    cleanup: () => {
+      channel.close();
+    }
+  };
+};

@@ -151,20 +151,36 @@ const PacsList = () => {
   }
 
   const openReport = async (record) => {
-
     if (hasReportingPermission(userDetails)) {
-      // if (!record?.po_reported_by || record?.po_reported_by === getUserDetails().username) {
+      const data = {
+        order_ids: [record?.pacs_order?.pacs_ord_id].join(','),
+      };
+      // Convert data to URL parameters
+      const params = new URLSearchParams(data).toString();
+      // Open in new tab
+      window.open(`/report?${params}`, '_blank');
+
+      // const response = await makePostCall('/study-report-details', { user_id: getUserDetails()?.username, order_id: record?.pacs_order?.pacs_ord_id });
+      // if (response?.data?.success) {
       //   setReportEditorModal({ visible: true, data: record });
       // } else {
-      //   message.error(`Study is taken by ${record.po_reported_by}`)
+      //   message.error(response?.data?.message);
+      //   return;
       // }
-      const response = await makePostCall('/study-report-details', { user_id: getUserDetails()?.username, order_id: record?.pacs_order?.pacs_ord_id });
-      if (response?.data?.success) {
-        setReportEditorModal({ visible: true, data: record });
-      } else {
-        message.error(response?.data?.message);
-        return;
-      }
+    } else {
+      message.info("You do not have the permission to do reporting")
+    }
+  }
+
+  const openSelectedStudies = () => {
+    if (hasReportingPermission(userDetails)) {
+      const data = {
+        order_ids: selectedRowKeys.join(','),
+      };
+      // Convert data to URL parameters
+      const params = new URLSearchParams(data).toString();
+      // Open in new tab
+      window.open(`/report?${params}`, '_blank');
     } else {
       message.info("You do not have the permission to do reporting")
     }
@@ -302,9 +318,9 @@ const PacsList = () => {
   const rowSelection = {
     selectedRowKeys,
     onChange: onSelectChange,
-    getCheckboxProps: (record: DataType) => ({
-      disabled: !isHOD, // Column configuration not to be checked
-    }),
+    // getCheckboxProps: (record: DataType) => ({
+    //   disabled: !isHOD, // Column configuration not to be checked
+    // }),
   };
 
   const assignToUser = () => {
@@ -624,13 +640,18 @@ const PacsList = () => {
               }} />
             </FloatLabel>
           </div>
-          <Button className='ms-3' type='primary' onClick={() => { filterResults(filters) }}>Search</Button>
-          <Button className='ms-3' type='default' onClick={() => { clearFilters() }}>Clear Filters</Button>
-          <Button className='ms-3' type='primary' onClick={() => { setSaveFiltersModal({ visible: true }) }}>Save Filters</Button>
-          {isHOD && (
-            <Button className='ms-3' type='secondary' onClick={() => { setAssignModal({ visible: true }) }}>Assign</Button>
-          )}
-          {/* <Button disabled={refreshDisabled} className='!ms-auto ms-3' type='dashed' danger onClick={() => { debouncedRefresh() }} >Refresh</Button> */}
+          <div>
+            <Button className='ms-3 mb-2' type='primary' onClick={() => { filterResults(filters) }}>Search</Button>
+            {isHOD && (
+              <Button className='ms-3 mb-2' type='secondary' onClick={() => { setAssignModal({ visible: true }) }}>Assign</Button>
+            )}
+            {!isHOD && (
+              <Button className='ms-3 mb-2' type='default' onClick={() => openSelectedStudies()}>Open Studies</Button>
+            )}
+            <Button className='ms-3' type='primary' onClick={() => { setSaveFiltersModal({ visible: true }) }}>Save Filters</Button>
+            <Button className='ms-3' type='default' onClick={() => { clearFilters() }}>Clear Filters</Button>
+
+          </div>
         </div>
         <div className='orders-list'>
           <Table

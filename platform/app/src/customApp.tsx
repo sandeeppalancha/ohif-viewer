@@ -19,10 +19,11 @@ import Login from './pages/login';
 import { ErrorBoundary } from "react-error-boundary";
 import MyWorklist from './pages/my-workilist';
 import PacsList from './pages/pacs';
-import { getUserDetails } from './utils/helper';
+import { createTabChannel, getUserDetails } from './utils/helper';
 import dayjs from 'dayjs';
 import Settings from './pages/settings';
 import DispatchList from './pages/Dispatch';
+import ReportingPage from './pages/ReportEditor/reporting-page'; ``
 
 const MyViewer = ({ appProps }) => {
 
@@ -149,6 +150,16 @@ function CustomApp(appProps) {
   }
 
   const ViewerElement = () => {
+    useEffect(() => {
+      const channel = createTabChannel();
+
+      channel.listenForUpdates((newUrl) => {
+        window.location.href = newUrl;
+      });
+
+      return () => channel.cleanup();
+    }, []);
+
     return (
       <MyViewer appProps={appProps} />
     );
@@ -220,14 +231,14 @@ function CustomApp(appProps) {
                 </PrivateRoute>
               }
             />
-            {/* <Route
-              path="/viewer"
+            <Route
+              path="/report"
               element={
                 <>
-                  <MyViewer appProps={{ appProps }} />
+                  <ReportingPage />
                 </>
               }
-            /> */}
+            />
           </Routes>
         </div>
       </BrowserRouter>
