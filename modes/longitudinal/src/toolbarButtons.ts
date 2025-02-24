@@ -173,27 +173,26 @@ const toolbarButtons: Button[] = [
       evaluate: 'evaluate.action',
     },
   },
-
+  {
+    id: 'StackScroll',
+    uiType: 'ohif.radioGroup',
+    props: {
+      icon: 'tool-stack-scroll',
+      label: 'StackScroll',
+      commands: setToolActiveToolbar,
+      evaluate: 'evaluate.cornerstoneTool',
+    },
+  },
   // {
-  //   id: 'StackScroll',
-  //   uiType: 'ohif.radioGroup',
+  //   id: 'SeriesScroll',
+  //   uiType: 'ohif.radioGroup', // Use custom type
   //   props: {
   //     icon: 'tool-stack-scroll',
-  //     label: 'StackScroll',
-  //     commands: 'resetViewport',
+  //     commands: 'toggleSeriesScroll',
+  //     label: 'Global Stack Scroll',
   //     evaluate: 'evaluate.action',
   //   },
   // },
-  {
-    id: 'SeriesScroll',
-    uiType: 'ohif.radioGroup', // Use custom type
-    props: {
-      icon: 'tool-stack-scroll',
-      commands: 'toggleSeriesScroll',
-      label: 'Global Stack Scroll',
-      evaluate: 'evaluate.action',
-    },
-  },
   // Window Level
   {
     id: 'WindowLevel',
